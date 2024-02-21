@@ -26,25 +26,64 @@ def draw_contour(image, contour):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def calculate_centerline_radii(contour, image, mask):
+SCALE = 0.1  # assuming each pixel represents 0.1 cm
+
+# def calculate_centerline_radii(contour, image, mask, scale=SCALE):
+#     moments = cv2.moments(contour)
+#     cx = int(moments['m10']/moments['m00'])
+#     cy = int(moments['m01']/moments['m00'])
+    
+#     # Draw the centerline on the mask
+#     cv2.line(mask, (cx, 0), (cx, image.shape[0]), (255, 0, 0), 2)
+#     cv2.imshow('Centerline', mask)
+#     cv2.waitKey(0)
+#     cv2.destroyAllWindows()
+    
+#     # Calculate radii
+#     radii = []
+#     for point in contour:
+#         x, y = point[0]
+#         radius = np.sqrt((x - cx) ** 2 + (y - cy) ** 2)
+#         radii.append((y, radius))
+#         # Convert pixel radii to centimeters
+#     radii_cm = [(y, radius * scale) for y, radius in radii]
+    
+#     return radii_cm, mask
+def calculate_centerline_radii(contour, image, draw_centerline=True):
+    # Calculate the moments of the largest contour
     moments = cv2.moments(contour)
     cx = int(moments['m10']/moments['m00'])
-    cy = int(moments['m01']/moments['m00'])
     
-    # Draw the centerline on the mask
-    cv2.line(mask, (cx, 0), (cx, image.shape[0]), (255, 0, 0), 2)
-    cv2.imshow('Centerline', mask)
-    cv2.waitKey(0)
+    # Create an empty image to draw the contour filled (for visualization)
+    contour_image = np.zeros(image.shape[:2], dtype=np.uint8)
+    cv2.drawContours(contour_image, [contour], -1, 255, thickness=cv2.FILLED)
+    
+    # Calculate the radii from the centerline to the contour
+    radii = []
+    for y in range(image.shape[0]):
+        # Get the slice of the contour image at height y
+        row = contour_image[y, :]
+        if np.any(row):
+            left_most = np.where(row > 0)[0][0]
+            right_most = np.where(row > 0)[0][-1]
+            radius_left = cx - left_most
+            radius_right = right_most - cx
+            # Use the average of the left and right radius for symmetry
+            average_radius = (radius_left + radius_right) / 2
+            radii.append((y, average_radius))
+    
+    # Draw the centerline for visualization
+    if draw_centerline:
+        for y, radius in radii:
+            cv2.circle(image, (cx, y), 1, (0, 0, 255), -1)  # Draw small circles to represent the centerline
+        cv2.drawContours(image, [contour], -1, (0, 255, 0), 2)  # Draw the largest contour
+    
+    # Show the image with the centerline and contour
+    cv2.imshow('Image with centerline and contour', image)
+    cv2.waitKey(100000)
     cv2.destroyAllWindows()
     
-    # Calculate radii
-    radii = []
-    for point in contour:
-        x, y = point[0]
-        radius = np.sqrt((x - cx) ** 2 + (y - cy) ** 2)
-        radii.append((y, radius))
-    
-    return radii, mask
+    return radii
 
 def main():
     image_dir = '/Users/vamsikrishna/Desktop/TestImages/'
@@ -54,7 +93,7 @@ def main():
     for image_path in image_paths:
         image, mask = segment_specimen(image_path)
         largest_contour = find_largest_contour(mask)
-        radii, image_with_contour_centerline = calculate_centerline_radii(largest_contour, image, mask)
+        radii = calculate_centerline_radii(largest_contour, image, True)
         all_radii.append(radii)
     
     # Now plot all radii together
@@ -62,6 +101,8 @@ def main():
         ys, radii_values = zip(*radii)
         plt.scatter(ys, radii_values, alpha=0.5)  # Use scatter plot for clarity
     
+    plt.xlim([0, 2100])  # Set x-axis range
+    plt.ylim([0, 400])  # Set y-axis range
     plt.xlabel('Height')
     plt.ylabel('Radius')
     plt.title('Radius at Each Height for All Images')
