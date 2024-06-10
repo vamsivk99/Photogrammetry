@@ -22,8 +22,4 @@ This project includes various scripts for image processing, contour extraction, 
 2. **Individual Scripts:**
    - You can still run individual scripts for specific tasks if needed.
 
-## Dependencies
-Ensure you have all the necessary dependencies installed. You can install them using:
-```sh
-pip install -r requirements.txt
 
