@@ -7,6 +7,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from scipy.spatial.distance import euclidean
 from scipy.signal import savgol_filter
 from sklearn.linear_model import RANSACRegressor
+import csv
 
 # Load the scaling factor from a file
 with open("scaling_factor.txt", "r") as f:
@@ -114,6 +115,24 @@ def process_folder(folder_path, scaling_factor):
         angles_and_radii.append((angle, radii, center_x))
     return angles_and_radii
 
+def save_to_csv(angles_and_radii, csv_filename="radii_data.csv"):
+    """
+    Saves the angle, radius, and height values to a CSV file.
+
+    Parameters:
+    angles_and_radii (list): A list of tuples where each tuple contains an angle,
+                             a list of tuples with height and radius values, and a third value.
+    csv_filename (str): The name of the CSV file to save the data. Default is 'radii_data.csv'.
+
+    The CSV file will have columns: angle, radius, and z.
+    """
+    with open(csv_filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["angle", "radius", "z"])
+        for angle, radii, _ in angles_and_radii:
+            for height, radius in radii:
+                writer.writerow([angle, radius, height])
+                
 def plot_3d_radii(angles_and_radii):
     """
     Visualize the measured radii in a 3D space and compare them to an ideal cylinder.
@@ -301,3 +320,4 @@ if __name__ == "__main__":
     plot_3d_radii(angles_and_radii)
     errors = plot_radii_vs_height(angles_and_radii)
     validate_with_ideal_cylinder(angles_and_radii)
+    save_to_csv(angles_and_radii)
